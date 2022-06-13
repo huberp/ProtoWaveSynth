@@ -1,7 +1,11 @@
 --[[
 name: wavefolding demo
-description: > wavefolding a sin wave
+description: > wavefolding a sin wave (see https://www.youtube.com/watch?v=JUptTzQGPNg for details) 
 author: synaesmedia
+
+Get Protoplug here : https://www.osar.fr/protoplug/
+
+My series on programming it : https://www.youtube.com/watch?v=zkgYBoiQPek&list=PLuBDEereAQUxEb6hsnaeqXe3TX3IbGfPG
 --]]
 
 require "include/protoplug"
