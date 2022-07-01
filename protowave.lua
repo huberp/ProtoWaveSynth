@@ -1,12 +1,13 @@
 --[[
-name: wavefolding demo
-description: > wavefolding a sin wave (see https://www.youtube.com/watch?v=JUptTzQGPNg for details) 
+name: ProtoWave Synth
+description: A demonstration synthesizer with wave-folding and phase modulation  
+See https://www.youtube.com/watch?v=_M1nBN6kCME for details 
 author: synaesmedia
 
 Get Protoplug here : https://www.osar.fr/protoplug/
 
 My series on programming it : https://www.youtube.com/watch?v=zkgYBoiQPek&list=PLuBDEereAQUxEb6hsnaeqXe3TX3IbGfPG
---]]
+--]] 
 
 require "include/protoplug"
 local makeFilter = require "include/dsp/cookbook filters"
@@ -97,10 +98,14 @@ function make_osc(init_freq, init_amp,init_th)
         phase=0,
         threshold=init_th,
         
+        pm_ratio=1,
+        mod_phase=0,
+ 
+        
         -----------------------------------------------
         next=function(self)
             local v = 1
-            local s = math.sin(self.phase)
+            local s = math.sin(self.phase+math.sin(self.mod_phase))
 		    if s > self.threshold then 
 		        v = self.threshold - (s-self.threshold)
 		        if v < 0 then
@@ -126,7 +131,10 @@ function make_osc(init_freq, init_amp,init_th)
 	           end
 	        end
 	        
+	        -- phase mod
+	        
 	        self.phase=self.phase+self.delta
+	        self.mod_phase=self.mod_phase+(self.delta*self.pm_ratio) 
 	        return final*self.amp
         end,
         -----------------------------------------------------
@@ -138,6 +146,7 @@ function make_osc(init_freq, init_amp,init_th)
         set_amp=function(self,a)
             self.amp=a
         end,
+ 
         set_threshold=function(self,th)
             self.threshold=th
         end,
@@ -146,6 +155,13 @@ function make_osc(init_freq, init_amp,init_th)
             n = (a / 32) * math.pow(2,((mn - 9) / 12))  -- (2 ** ((mn - 9) / 12))
             self:set_freq(n)
             self.phase = 0
+        end,
+        
+        reset_mod_phase = function(self)
+            self.mod_phase = 0
+        end,
+        set_pm_ratio=function(self,v)
+            self.pm_ratio = v
         end
     }
     o:set_freq(init_freq) -- so that delta is initialized properly
@@ -157,6 +173,7 @@ local osc2 = make_osc(441,0.5,0.5)
 
 local o12ratio = 1.001
 local fold_threshold=1
+local pm_ratio = 1
 
 local lfo1 = make_osc(4,1,0.5)
 local lfo_amp = 0
@@ -166,7 +183,7 @@ local env = make_env(1000, 5000, 0.5, 5000)
 
 local theFilter = makeFilter
 	{
-		-- initialize filters with current param values
+	-- initialize filters with current param values
 		type 	= "lp";
 		f 		= 220;
 		gain 	= 0;
@@ -188,21 +205,23 @@ function plugin.processBlock(samples, smax, midiBuf)
 	end
 
     -- Handle sound synthesis
+    	osc1:set_pm_ratio(pm_ratio)
+    	osc2:set_pm_ratio(pm_ratio)
+	
 	for i=0,smax do
-	    vlfo = lfo1:next()
-	        
+	    vlfo = lfo1:next()        
 	    osc1:set_threshold(fold_threshold)
 	    osc2:set_threshold(fold_threshold)
 	    
-        v1 = osc1:next()
-        v2 = osc2:next()
-        v = (v1+v2)/2
-        v = ((v*lfo_amp*vlfo)+(v*(1-lfo_amp)))/2
+	v1 = osc1:next()
+	v2 = osc2:next()
+	v = (v1+v2)/2
+	v = ((v*lfo_amp*vlfo)+(v*(1-lfo_amp)))/2
 
-        v = v * env:next()
-        
-        filtered = theFilter.process(v)
-        samples[0][i] = filtered 
+	v = v * env:next()
+
+	filtered = theFilter.process(v)
+	samples[0][i] = filtered 
 		samples[1][i] = filtered
 	end
 end
@@ -264,8 +283,17 @@ plugin.manageParams {
         end;
     };
 
--- set_pw
-
+-- 
+    {
+        name = "PM Ratio";
+        min = 0;
+        max = 5;
+        changed = function(val)
+            pm_ratio = val
+        end;
+    };
+ 
+--
 
     {
         name = "Wavefolding Threshold";
