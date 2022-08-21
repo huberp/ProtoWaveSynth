@@ -12,6 +12,11 @@ My series on programming it : https://www.youtube.com/watch?v=zkgYBoiQPek&list=P
 require "include/protoplug"
 local makeFilter = require "include/dsp/cookbook filters"
 
+local m_pow = math.pow
+local m_sin = math.sin
+local a = 440 -- Hz
+local const_n = (a / 32)
+
 function freq_to_delta(f)
 		local sr = plugin.isSampleRateKnown() and plugin.getSampleRate() or 44100
 	    return 2*math.pi*f/sr
@@ -105,7 +110,7 @@ function make_osc(init_freq, init_amp,init_th)
         -----------------------------------------------
         next=function(self)
             local v = 1
-            local s = math.sin(self.phase+math.sin(self.mod_phase))
+            local s = m_sin(self.phase+m_sin(self.mod_phase))
 		    if s > self.threshold then 
 		        v = self.threshold - (s-self.threshold)
 		        if v < 0 then
@@ -151,8 +156,7 @@ function make_osc(init_freq, init_amp,init_th)
             self.threshold=th
         end,
         set_midi_note = function(self,mn)
-            a = 440 -- frequency of A (common value is 440Hz)
-            n = (a / 32) * math.pow(2,((mn - 9) / 12))  -- (2 ** ((mn - 9) / 12))
+            n = const_n * m_pow(2,((mn - 9) / 12))  -- (2 ** ((mn - 9) / 12))
             self:set_freq(n)
             self.phase = 0
         end,
@@ -213,15 +217,15 @@ function plugin.processBlock(samples, smax, midiBuf)
 	    osc1:set_threshold(fold_threshold)
 	    osc2:set_threshold(fold_threshold)
 	    
-	v1 = osc1:next()
-	v2 = osc2:next()
-	v = (v1+v2)/2
-	v = ((v*lfo_amp*vlfo)+(v*(1-lfo_amp)))/2
+		v1 = osc1:next()
+		v2 = osc2:next()
+		v = (v1+v2)/2
+		v = ((v*lfo_amp*vlfo)+(v*(1-lfo_amp)))/2
 
-	v = v * env:next()
+		v = v * env:next()
 
-	filtered = theFilter.process(v)
-	samples[0][i] = filtered 
+		filtered = theFilter.process(v)
+		samples[0][i] = filtered 
 		samples[1][i] = filtered
 	end
 end
